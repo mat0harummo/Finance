@@ -1,0 +1,706 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Мои конверты</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600&family=Unbounded:wght@500;700&display=swap">
+<style>
+html{-webkit-text-size-adjust:100%}
+[hidden]{display:none!important}
+body{margin:0}
+/* Layout: one narrow phone-first column — total, envelope ledger, entry form, history */
+:root{
+  --bg:#EDF1EF; --surface:#FFFFFF; --fg:#15211C; --muted:#5D6B65; --line:#D4DDD9;
+  --accent:#1E6B58; --accent-ink:#FFFFFF; --danger:#B4373F;
+  --e-need:#3F67A0; --e-fun:#D0469A; --e-cushion:#23876A; --e-goals:#B9801A; --e-invest:#6B4FB3; --e-drive:#C8592A; --e-anniv:#B8456A;
+  --font-display:"Unbounded","Arial Black",system-ui,sans-serif;
+  --font-body:"Onest",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111816; --surface:#19221F; --fg:#E6EDEA; --muted:#93A39C; --line:#2C3934;
+  --accent:#5FC2A4; --accent-ink:#0D1714; --danger:#F07C84;
+  --e-need:#7EA3DA; --e-fun:#F07CC8; --e-cushion:#5FC2A4; --e-goals:#E2B35A; --e-invest:#A88EEA; --e-drive:#F0956A; --e-anniv:#E890B0;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111816; --surface:#19221F; --fg:#E6EDEA; --muted:#93A39C; --line:#2C3934;
+  --accent:#5FC2A4; --accent-ink:#0D1714; --danger:#F07C84;
+  --e-need:#7EA3DA; --e-fun:#F07CC8; --e-cushion:#5FC2A4; --e-goals:#E2B35A; --e-invest:#A88EEA; --e-drive:#F0956A; --e-anniv:#E890B0;
+  color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:15px;line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 40px}
+.wrap{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:28px}
+.num{font-variant-numeric:tabular-nums}
+h1,h2{margin:0;text-wrap:balance}
+.eyebrow{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:500}
+header{display:flex;flex-direction:column;gap:6px}
+.total{font-family:var(--font-display);font-weight:700;font-size:clamp(30px,9vw,40px);letter-spacing:-.01em}
+.sub{color:var(--muted);font-size:14px}
+.status{font-size:13px;color:var(--muted)}
+.status.warn{color:var(--danger)}
+
+/* envelopes */
+.cardsum{display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.crow{display:grid;grid-template-columns:1fr auto;gap:2px 12px;align-items:baseline;padding:12px 14px;border-top:1px solid var(--line)}
+.crow:first-child{border-top:0}
+.crow .cn{font-weight:600;min-width:0}
+.crow .cv{font-family:var(--font-display);font-weight:500;font-size:18px;text-align:right}
+.crow .cv.neg{color:var(--danger)}
+.crow .cb{grid-column:1 / 3;font-size:12.5px;color:var(--muted);display:flex;flex-wrap:wrap;gap:2px 10px}
+.crow .cb span{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.crow .cb .dot{width:8px;height:8px;border-radius:2px;background:var(--c)}
+.ledger{display:flex;flex-direction:column;border-top:1px solid var(--line)}
+.env{display:grid;grid-template-columns:12px 1fr auto;gap:4px 12px;align-items:center;padding:14px 0;border-bottom:1px solid var(--line)}
+.dot{width:12px;height:12px;border-radius:3px;background:var(--c)}
+.env .name{font-weight:600;min-width:0;display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 8px}
+.cardtag{font-size:12px;font-weight:500;color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:1px 7px;white-space:nowrap}
+.env .bal{font-family:var(--font-display);font-weight:500;font-size:18px;text-align:right}
+.env .bal.neg{color:var(--danger)}
+.env .meta{grid-column:2 / 4;font-size:13px;color:var(--muted)}
+.bar{grid-column:2 / 4;height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin-top:4px}
+.bar i{display:block;height:100%;background:var(--c);width:0;transition:width .4s ease}
+
+/* form */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:14px}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);background:var(--bg);border-radius:10px;padding:4px;gap:4px}
+.seg button{border:0;background:transparent;color:var(--muted);font:inherit;font-size:13.5px;font-weight:600;padding:10px 2px;line-height:1.2;border-radius:7px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--fg);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+label{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted);font-weight:500}
+input{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:11px 12px;width:100%;min-width:0}
+input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.amount{font-family:var(--font-display);font-size:22px;font-weight:500}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--line);background:transparent;color:var(--fg);font:inherit;font-size:14px;padding:8px 12px;border-radius:999px;cursor:pointer;display:flex;align-items:center;gap:8px}
+.chip .dot{width:9px;height:9px}
+.chip[aria-pressed="true"]{border-color:var(--c);background:color-mix(in srgb,var(--c) 14%,transparent)}
+.why{font-size:13px;color:var(--muted);margin-top:-6px;min-height:1.2em}
+.why b{color:var(--fg);font-weight:600}
+.preview{display:flex;flex-direction:column;gap:8px}
+.preview:empty{display:none}
+.plan{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.planrow{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:9px 12px;font-size:14px;border-top:1px solid var(--line)}
+.planrow:first-child{border-top:0}
+.planrow .pl{display:flex;align-items:center;gap:8px;min-width:0}
+.planrow .dot{width:9px;height:9px;flex:none}
+.planrow b{font-weight:600}
+.planrow .pv{font-weight:600;white-space:nowrap}
+.item .plan{grid-column:1 / -1;margin-top:8px}
+.item .more{grid-column:1;justify-self:start;border:0;background:transparent;color:var(--accent);font:inherit;font-size:13px;font-weight:500;padding:4px 0;cursor:pointer}
+.primary{border:0;background:var(--accent);color:var(--accent-ink);font:inherit;font-weight:600;padding:13px;border-radius:10px;cursor:pointer}
+.primary:disabled{opacity:.5;cursor:default}
+
+/* history */
+.hist{display:flex;flex-direction:column}
+.item{display:grid;grid-template-columns:1fr auto auto;gap:2px 10px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+.item .what{font-weight:500;min-width:0;overflow-wrap:anywhere}
+.item .when{grid-column:1;font-size:12px;color:var(--muted)}
+.item .amt{font-weight:600;grid-row:1 / 3;grid-column:2}
+.item .amt.plus{color:var(--e-cushion)}
+.item .amt.move{color:var(--muted)}
+.env .fix{grid-column:2 / 4;justify-self:start;margin-top:6px;border:1px solid var(--danger);background:transparent;color:var(--danger);font:inherit;font-size:13px;font-weight:600;padding:7px 12px;border-radius:999px;cursor:pointer}
+.env .fix:disabled{opacity:.5;cursor:default}
+#movepick{display:flex;flex-direction:column;gap:8px}
+#movepick[hidden],#envpick[hidden],#srcpick[hidden]{display:none}
+.pitem{display:grid;grid-template-columns:1fr auto auto;gap:2px 10px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+.pitem .pname{font-weight:600;min-width:0;overflow-wrap:anywhere}
+.pitem .pamt{grid-row:1 / 3;grid-column:2;font-weight:600}
+.pitem .del{grid-row:1 / 3;grid-column:3;border:0;background:transparent;color:var(--muted);font:inherit;font-size:13px;padding:6px 8px;border-radius:6px;cursor:pointer}
+.pitem .del.confirm{color:var(--danger);font-weight:600}
+.pitem .pmeta{grid-column:1;font-size:12px;color:var(--muted)}
+.pill{display:inline-block;font-size:12px;font-weight:600;padding:2px 8px;border-radius:999px;margin-left:6px}
+.pill.ok{background:color-mix(in srgb,var(--e-cushion) 16%,transparent);color:var(--e-cushion)}
+.pill.short{background:color-mix(in srgb,var(--danger) 14%,transparent);color:var(--danger)}
+.soon{color:var(--danger);font-weight:600}
+#addPlanned{margin-top:10px}
+#addPlanned summary{font-weight:500;color:var(--accent)}
+.pform{display:flex;flex-direction:column;gap:10px;margin-top:10px}
+select{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:11px 12px;width:100%;min-width:0}
+.check{flex-direction:row;align-items:center;gap:8px;color:var(--fg);font-size:14px}
+.check input{width:auto}
+.danger{border-color:var(--danger);color:var(--danger)}
+.item .del{grid-row:1 / 3;grid-column:3;border:0;background:transparent;color:var(--muted);font:inherit;font-size:13px;padding:6px 8px;border-radius:6px;cursor:pointer}
+.item .del.confirm{color:var(--danger);font-weight:600}
+.empty{color:var(--muted);font-size:14px;padding:14px 0;border-bottom:1px solid var(--line)}
+.sectionhead{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:4px 12px;margin-bottom:10px}
+.sectionhead h2{font-size:17px;font-weight:600}
+
+details{border-top:1px solid var(--line);padding-top:14px}
+summary{cursor:pointer;font-weight:600}
+.settings{display:flex;flex-direction:column;gap:14px;margin-top:14px}
+.settings .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.note{font-size:13px;color:var(--muted)}
+.ghost{border:1px solid var(--line);background:transparent;color:var(--fg);font:inherit;font-weight:600;padding:11px;border-radius:10px;cursor:pointer}
+@media (prefers-reduced-motion: reduce){.bar i{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span class="eyebrow">Всего по конвертам</span>
+    <div class="total num" id="total">—</div>
+    <div class="sub" id="weekline">Доход в неделю по плану: 7 100 ₽</div>
+    <div class="status" id="status">Загружаю записи…</div>
+  </header>
+
+  <section aria-labelledby="cardsTitle">
+    <div class="sectionhead"><h2 id="cardsTitle">Сколько должно лежать на картах</h2></div>
+    <div class="cardsum" id="cardsum"></div>
+  </section>
+
+  <section aria-labelledby="envTitle">
+    <div class="sectionhead"><h2 id="envTitle">Конверты</h2></div>
+    <div class="ledger" id="ledger"></div>
+  </section>
+
+  <section aria-labelledby="plannedTitle">
+    <div class="sectionhead"><h2 id="plannedTitle">Скоро платить</h2><span class="note">хватит ли денег в конверте</span></div>
+    <div id="planned"></div>
+    <details id="addPlanned">
+      <summary>Добавить плановую трату</summary>
+      <div class="pform">
+        <label>Что<input id="p-name" placeholder="Например: подарок на день рождения" autocomplete="off"></label>
+        <div class="row2">
+          <label>Сумма, ₽<input id="p-amount" inputmode="numeric" class="num" placeholder="2 000"></label>
+          <label>Дата<input id="p-date" type="date"></label>
+        </div>
+        <label>Из какого конверта<select id="p-env"></select></label>
+        <label class="check"><input type="checkbox" id="p-monthly"> Повторять каждый месяц в этот день</label>
+        <button type="button" class="ghost" id="p-add">Добавить</button>
+        <div class="note" id="p-msg" aria-live="polite"></div>
+      </div>
+    </details>
+  </section>
+
+  <section class="card" aria-labelledby="formtitle">
+    <h2 id="formtitle" class="eyebrow" style="font-size:12px">Новая запись</h2>
+    <div class="seg" role="group" aria-label="Тип записи">
+      <button type="button" id="kind-income" aria-pressed="true">Пришли деньги</button>
+      <button type="button" id="kind-spend" aria-pressed="false">Потратила</button>
+      <button type="button" id="kind-move" aria-pressed="false">Переложить</button>
+    </div>
+    <label>Сумма, ₽
+      <input id="f-amount" class="amount num" inputmode="numeric" placeholder="7 100" autocomplete="off">
+    </label>
+    <label><span id="noteLabel">Откуда деньги</span>
+      <input id="f-note" placeholder="Например: зарплата за уроки, мама скинула" autocomplete="off">
+    </label>
+    <div class="why" id="why" aria-live="polite"></div>
+    <div id="srcpick">
+      <div class="chips" id="srcchips" aria-label="Тип поступления"></div>
+    </div>
+    <div id="envpick" hidden>
+      <div class="chips" id="chips" aria-label="Конверт"></div>
+    </div>
+    <div id="movepick" hidden>
+      <div class="note">Откуда</div>
+      <div class="chips" id="fromchips" aria-label="Откуда"></div>
+      <div class="note">Куда</div>
+      <div class="chips" id="tochips" aria-label="Куда"></div>
+    </div>
+    <div class="preview" id="preview"></div>
+    <label>Дата<input id="f-date" type="date"></label>
+    <button type="button" class="primary" id="save" disabled>Записать</button>
+  </section>
+
+  <section>
+    <div class="sectionhead"><h2>История</h2><span class="note" id="count"></span></div>
+    <div class="hist" id="hist"></div>
+  </section>
+
+  <details id="settingsBox">
+    <summary>Настройки плана</summary>
+    <div class="settings">
+      <div class="note">Как делится каждое поступление. Если пришло больше, остаток идёт в подушку. Если меньше, всё уменьшается пропорционально. «Другое» сначала закрывает минус в конвертах, остаток идёт в подушку.</div>
+      <div class="eyebrow">Зарплата в четверг</div>
+      <div class="grid" id="salaryInputs"></div>
+      <div class="eyebrow">Работа в субботу</div>
+      <div class="grid" id="workInputs"></div>
+      <div class="eyebrow">Деньги от папы</div>
+      <div class="grid" id="weekendInputs"></div>
+      <div class="note">Сколько было в конвертах на старте. Если цифры на странице разошлись с тем, что реально лежит на картах и вкладе, впиши сюда реальные суммы и нажми «Начать заново». История записей удалится.</div>
+      <div class="grid" id="startInputs"></div>
+      <button type="button" class="ghost danger" id="resetAll">Начать заново с этими суммами</button>
+      <div class="grid">
+        <label>Цель подушки, ₽<input id="s-target" inputmode="numeric" class="num"></label>
+        <label>Цель на автошколу, ₽<input id="s-drive" inputmode="numeric" class="num"></label>
+      </div>
+      <div class="note">Как называть карты (например, по банку). Карта 1 для обязательного, карта 2 для «гулять», карта 3 накопительная с копилками (годовщина, подушка, цели, автошкола, инвестиции).</div>
+      <div class="grid">
+        <label>Карта 1<input id="cn-1" placeholder="Карта 1" autocomplete="off"></label>
+        <label>Карта 2<input id="cn-2" placeholder="Карта 2" autocomplete="off"></label>
+        <label>Карта 3<input id="cn-3" placeholder="Карта 3" autocomplete="off"></label>
+      </div>
+      <div class="note">Когда подушка набрана, её доля делится: 1 500 в «Автошколу», 1 000 в «Инвестиции». Когда собрана автошкола, её деньги идут в «Цели и вклад».</div>
+      <button type="button" class="ghost" id="saveSettings">Сохранить настройки</button>
+      <div class="note" id="settingsMsg" aria-live="polite"></div>
+    </div>
+  </details>
+</div>
+
+<script>
+(function(){
+  const ENVS=[
+    {k:"need",name:"Обязательное",c:"--e-need",hint:"еда, подписки"},
+    {k:"anniv",name:"Годовщина",c:"--e-anniv",hint:"подарок 18-го, лежит на карте 3"},
+    {k:"fun",name:"Гулять",c:"--e-fun",hint:"тратишь без чувства вины"},
+    {k:"cushion",name:"Подушка",c:"--e-cushion",hint:"на чёрный день"},
+    {k:"goals",name:"Цели и вклад",c:"--e-goals",hint:"подарки, покупки, вклад"},
+    {k:"drive",name:"Автошкола",c:"--e-drive",hint:"на права, лежит на вкладе"},
+    {k:"invest",name:"Инвестиции",c:"--e-invest",hint:"ОФЗ, фонды"}
+  ];
+  const SOURCES=[{k:"salary",name:"Зарплата (чт)"},{k:"work",name:"Работа (сб)"},{k:"weekend",name:"От папы"},{k:"other",name:"Другое"}];
+  const SRCBY=Object.fromEntries(SOURCES.map(s=>[s.k,s]));
+  const DEFAULTS={salary:{need:600,anniv:500,fun:0,cushion:1400,goals:0,drive:800,invest:300},work:{need:0,anniv:0,fun:1000,cushion:0,goals:500,drive:0,invest:0},weekend:{need:1500,anniv:0,fun:500,cushion:0,goals:0,drive:0,invest:0},cards:{c1:"Обязательное",c2:"Гулянки",c3:"Вклад"},
+    planned:[{name:"ДР подруги",amount:10000,env:"goals",monthly:false,date:"2026-11-11"},{name:"Годовщина",amount:2000,env:"anniv",monthly:true,day:18}],
+    start:{need:0,anniv:0,fun:0,cushion:0,goals:0,drive:0,invest:0},target:28000,driveTarget:60000,after:{drive:1500,invest:1000}};
+  let settings=JSON.parse(JSON.stringify(DEFAULTS));
+  let entries=[]; let db=null; let kind="income"; let spendEnv="fun"; let source=null; let manualEnv=null; let moveFrom="cushion", moveTo="need"; let pendingDel=null; const expanded=new Set();
+  // ---- reading the free-text note: keyword stems first, Claude for anything they miss
+  const B="(?:^|[^а-яё])", E="(?=$|[^а-яё])";
+  const R=(stems,whole)=>new RegExp(B+"(?:"+stems+")"+(whole?E:""),"i");
+  const RULES={
+    income:[
+      ["work",R("работ|смен|суббот")],
+      ["salary",R("зарплат|зп|аванс|ученик|урок|репетит|заняти|оплатил|оплата за")],
+      ["weekend",R("мам|пап|родител|бабушк|дедушк|карманн|на выходн|выходны|скинул")],
+      ["weekend",R("дали|дал|дала",true)],
+      ["other",R("подар|кешб|кэшб|процент|вернул|возврат|продал|преми|стипенд|выигр")]
+    ],
+    spend:[
+      ["drive",R("автошкол|инструктор|вождени|медсправк|госпошлин|гибдд|гаи")],
+      ["drive",R("права|прав",true)],
+      ["cushion",R("ремонт|непредвид|врач|штраф|сломал|сломался")],
+      ["anniv",R("годовщин")],
+      ["need",R("ед[аыу]|продукт|обед|завтрак|ужин|столов|перекус|проезд|метро|автобус|электрич|транспорт|тройк|подписк|связь|телефон|интернет|учеб|учёб|аптек|лекарств|пятёроч|пятероч|магнит|перекрёст|перекресток|вкусвилл")],
+      ["invest",R("облигац|офз|акци|брокер|фонд|инвест")],
+      ["goals",R("день рожд|подар|ноутбук|поездк|путешеств|вклад|билет")],
+      ["goals",R("др",true)],
+      ["fun",R("кафе|кофе|кино|ресторан|одежд|шопинг|шоппинг|развлеч|косметик|гуля|концерт|доставк|вкусняш|игр|кальян|клуб|маникюр")],
+      ["fun",R("бар|бары|баре",true)]
+    ]
+  };
+  function ruleMatch(text,k){const t=" "+text.toLowerCase().replace(/ё/g,"е")+" ";
+    for(const [key,re] of RULES[k]){const src=re.source.replace(/ё/g,"е");if(new RegExp(src,"i").test(t))return key}return null}
+  let autoPick=null, autoBy=null, aiBusy=false, aiCtl=null, aiPromise=null, sampleFn=undefined, noteTimer=null;
+  async function getSample(){return null}
+  async function askClaude(text,k){
+    const s=await getSample();if(!s)return null;
+    if(aiCtl)aiCtl.abort();aiCtl=new AbortController();const ctl=aiCtl;
+    const opts=k==="income"
+      ?'salary — зарплата за уроки, приходит по четвергам; work — оплата за работу по субботам; weekend — деньги, которые даёт папа или другие родные на неделю, на еду и жизнь; other — всё остальное разовое: подарки деньгами, кешбэк, проценты, возвраты, продажи'
+      :'need — обязательное: еда, продукты, проезд, подписки, связь, учёба; anniv — ежемесячный подарок партнёру на годовщину отношений; fun — гулять: кафе, развлечения, одежда и покупки для себя; goals — цели: подарки на праздники и дни рождения, поездки, крупные покупки, вклад; drive — автошкола и всё для получения прав: занятия, инструктор, медсправка, экзамены, госпошлина; cushion — срочные непредвиденные расходы; invest — покупка облигаций, акций, фондов';
+    const prompt="Ты сортируешь записи в личном трекере денег по категориям. Тип записи: "+(k==="income"?"поступление денег":"трата")+".\nКатегории:\n"+opts+"\n\nЗапись пользователя: «"+text.slice(0,200)+"»\n\nОтветь только JSON вида {\"pick\":\"<ключ категории>\"}. Если по записи нельзя понять категорию, ответь {\"pick\":null}.";
+    try{const v=await s.json(prompt,{modelTier:"quick",signal:ctl.signal});
+      const keys=k==="income"?SOURCES.map(x=>x.k):ENVS.map(x=>x.k);
+      return v&&keys.includes(v.pick)?v.pick:null}catch(e){return null}
+  }
+  async function classifyNote(){
+    const text=$("f-note").value.trim();const k=kind;
+    autoPick=null;autoBy=null;
+    if(k==="move"){aiBusy=false;refreshPick();return}
+    if(text.length<2){aiBusy=false;refreshPick();return}
+    const hit=ruleMatch(text,k);
+    if(hit){autoPick=hit;autoBy="text";aiBusy=false;refreshPick();return}
+    if(text.length<3){refreshPick();return}
+    aiBusy=true;refreshPick();
+    const p=askClaude(text,k);aiPromise=p;const pick=await p;
+    if(aiPromise!==p||$("f-note").value.trim()!==text||kind!==k)return;
+    aiBusy=false;aiPromise=null;autoPick=pick;autoBy=pick?"ai":null;refreshPick();
+  }
+  function pickName(key){return kind==="income"?(SRCBY[key]||{}).name:(ENVBY[key]||{}).name}
+  function refreshPick(){
+    const W=$("why");W.textContent="";
+    const manual=kind==="income"?source:manualEnv;
+    if(kind==="move"||manual){}
+    else if(aiBusy){W.textContent="Разбираю запись…"}
+    else if(autoPick){W.append(autoBy==="ai"?"Claude отнёс к: ":"Поняла по тексту: ");const b=document.createElement("b");b.textContent=pickName(autoPick);W.append(b,". Если не так, выбери ниже.")}
+    else if($("f-note").value.trim().length>=3){W.textContent=kind==="income"?"Не поняла, выбери ниже. Пока стоит вариант по дню недели.":"Не поняла, выбери конверт ниже."}
+    buildSrcChips();buildChips();buildMoveChips();render();
+  }
+  function guessSource(dateStr){const d=new Date((dateStr||"")+"T12:00:00").getDay();return d===4?"salary":d===6?"work":"weekend"}
+
+  const fmt=n=>new Intl.NumberFormat("ru-RU",{maximumFractionDigits:0}).format(Math.round(n))+" ₽";
+  const $=id=>document.getElementById(id);
+  const num=v=>{const n=parseFloat(String(v).replace(/\s/g,"").replace(",","."));return isFinite(n)?n:0};
+  const today=()=>{const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,10)};
+  const sumSplit=s=>ENVS.reduce((a,e)=>a+(s[e.k]||0),0);
+
+  function weekSplit(){const w={};ENVS.forEach(e=>w[e.k]=(settings.salary[e.k]||0)+(settings.work[e.k]||0)+(settings.weekend[e.k]||0));return w}
+  function allocate(income,bal,src){
+    const cushionBal=bal.cushion||0, driveBal=bal.drive||0;
+    let base=src==="salary"?settings.salary:src==="work"?settings.work:src==="weekend"?settings.weekend:src==="other"?null:weekSplit();
+    const a={};ENVS.forEach(e=>a[e.k]=0);
+    const bs=base?sumSplit(base):0;
+    if(src==="other"){
+      // windfall: first close any envelope that went below zero, the rest goes to the cushion
+      let left=income;
+      for(const k of ["need","anniv","fun","goals","drive","invest","cushion"]){if(left<=0)break;const neg=-(bal[k]||0);if(neg>0){const v=Math.min(neg,left);a[k]+=v;left-=v}}
+      a.cushion+=left;
+    }
+    else if(!base||bs<=0){a.cushion=income}
+    else if(income>=bs){ENVS.forEach(e=>a[e.k]=base[e.k]||0);a.cushion+=income-bs}
+    else{let used=0,big=ENVS[0].k;ENVS.forEach(e=>{a[e.k]=Math.floor((base[e.k]||0)*income/bs);used+=a[e.k];if((base[e.k]||0)>(base[big]||0))big=e.k});a[big]+=income-used}
+    const room=Math.max(0,settings.target-cushionBal);
+    if(a.cushion>room){
+      // cushion is full: its share moves on by the "after" proportions
+      const extra=a.cushion-room;a.cushion=room;
+      const keys=ENVS.map(e=>e.k).filter(k=>(settings.after[k]||0)>0&&k!=="cushion");
+      const at=keys.reduce((x,k)=>x+settings.after[k],0);
+      if(!at){a.goals+=extra}else{let used=0;keys.forEach((k,i)=>{const v=i===keys.length-1?extra-used:Math.round(extra*settings.after[k]/at);a[k]+=v;used+=v})}
+    }
+    const droom=Math.max(0,(settings.driveTarget||0)-driveBal);
+    if(a.drive>droom){const ex=a.drive-droom;a.drive=droom;a.goals+=ex}
+    return a;
+  }
+  function compute(){
+    const bal={...settings.start};ENVS.forEach(e=>bal[e.k]=num(bal[e.k]));
+    const sorted=[...entries].sort((x,y)=>(x.date<y.date?-1:x.date>y.date?1:(x.createdAt||0)-(y.createdAt||0)));
+    const allocs={};
+    sorted.forEach(en=>{
+      if(en.kind==="income"){const a=allocate(en.amount,bal,en.source);allocs[en.id]=a;ENVS.forEach(e=>bal[e.k]+=a[e.k])}
+      else if(en.kind==="move"){if(bal[en.from]!==undefined&&bal[en.to]!==undefined){bal[en.from]-=en.amount;bal[en.to]+=en.amount}}
+      else if(bal[en.env]!==undefined){bal[en.env]-=en.amount}
+    });
+    return {bal,allocs};
+  }
+
+  function render(){
+    const {bal,allocs}=compute();
+    $("total").textContent=fmt(ENVS.reduce((a,e)=>a+bal[e.k],0));
+    $("weekline").textContent="В неделю по плану: зарплата "+fmt(sumSplit(settings.salary))+" в четверг, работа "+fmt(sumSplit(settings.work))+" в субботу, от папы "+fmt(sumSplit(settings.weekend));
+    const L=$("ledger");L.textContent="";const ws=weekSplit();
+    ENVS.forEach(e=>{
+      const row=document.createElement("div");row.className="env";row.style.setProperty("--c","var("+e.c+")");
+      const w=ws[e.k]||0;
+      let meta="+"+fmt(w)+" в неделю · "+e.hint;
+      if(e.k==="drive"){
+        const t=settings.driveTarget||0,pct=t>0?Math.min(100,bal.drive/t*100):0;
+        meta=bal.drive>=t?"Собрано! Можно записываться":"Цель "+fmt(t)+" · осталось "+fmt(Math.max(0,t-bal.drive));
+        row.innerHTML='<span class="dot"></span><span class="name"></span><span class="bal num"></span><span class="meta"></span><span class="bar"><i style="width:'+pct.toFixed(1)+'%"></i></span>';
+      } else if(e.k==="cushion"){
+        const pct=settings.target>0?Math.min(100,bal.cushion/settings.target*100):0;
+        meta=bal.cushion>=settings.target?"Набрана! Её доля теперь идёт дальше по плану":"Цель "+fmt(settings.target)+" · осталось "+fmt(Math.max(0,settings.target-bal.cushion));
+        row.innerHTML='<span class="dot"></span><span class="name"></span><span class="bal num"></span><span class="meta"></span><span class="bar"><i style="width:'+pct.toFixed(1)+'%"></i></span>';
+      } else row.innerHTML='<span class="dot"></span><span class="name"></span><span class="bal num"></span><span class="meta"></span>';
+      const nm=row.querySelector(".name");nm.textContent=e.name;
+      const tag=document.createElement("span");tag.className="cardtag";tag.textContent="на карте «"+cardName(cardOf(e.k))+"»";nm.appendChild(tag);
+      const b=row.querySelector(".bal");b.textContent=fmt(bal[e.k]);if(bal[e.k]<0)b.classList.add("neg");
+      row.querySelector(".meta").textContent=meta;
+      if(bal[e.k]<0){
+        const need=-bal[e.k];
+        const src=coverSource(bal,e.k,need);
+        if(src){const f=document.createElement("button");f.type="button";f.className="fix";
+          f.textContent="Закрыть минус из «"+ENVBY[src].name+"»";
+          f.onclick=async()=>{f.disabled=true;await addEntry({kind:"move",from:src,to:e.k,amount:Math.round(need),note:"закрыла минус",date:today(),createdAt:Date.now()})};
+          row.appendChild(f)}
+      }
+      L.appendChild(row);
+    });
+    renderCards(bal);renderHist(allocs);renderPreview(bal);renderPlanned(bal);
+  }
+  function renderCards(bal){
+    const C=$("cardsum");C.textContent="";
+    [1,2,3].forEach(i=>{
+      const envs=ENVS.filter(e=>cardOf(e.k)===i);
+      const sum=envs.reduce((a,e)=>a+(bal[e.k]||0),0);
+      const row=document.createElement("div");row.className="crow";
+      const n=document.createElement("span");n.className="cn";n.textContent="«"+cardName(i)+"»";
+      const v=document.createElement("span");v.className="cv num";v.textContent=fmt(sum);if(sum<0)v.classList.add("neg");
+      const b=document.createElement("span");b.className="cb";
+      envs.forEach(e=>{const x=document.createElement("span");x.style.setProperty("--c","var("+e.c+")");x.innerHTML='<span class="dot"></span>';x.append(e.name+" "+fmt(bal[e.k]||0));b.appendChild(x)});
+      row.append(n,v,b);C.appendChild(row);
+    });
+  }
+  const ENVBY=Object.fromEntries(ENVS.map(e=>[e.k,e]));
+  function coverSource(bal,except,need){
+    const order=["cushion","goals","fun","drive","invest","anniv","need"].filter(k=>k!==except);
+    const full=order.find(k=>(bal[k]||0)>=need);if(full)return full;
+    let best=null;order.forEach(k=>{if((bal[k]||0)>0&&(!best||bal[k]>bal[best]))best=k});return best;
+  }
+  function dateLabel(s){try{return new Date(s+"T12:00:00").toLocaleDateString("ru-RU",{day:"numeric",month:"short",weekday:"short"})}catch(_){return s}}
+  function renderHist(allocs){
+    const H=$("hist");H.textContent="";
+    const list=[...entries].sort((x,y)=>(x.date>y.date?-1:x.date<y.date?1:(y.createdAt||0)-(x.createdAt||0)));
+    const n=list.length,m10=n%10,m100=n%100;$("count").textContent=n?n+" "+(m10===1&&m100!==11?"запись":m10>=2&&m10<=4&&(m100<12||m100>14)?"записи":"записей"):"";
+    if(!list.length){const d=document.createElement("div");d.className="empty";d.textContent="Пока пусто. Когда придут деньги, запиши доход выше: он сам разложится по конвертам.";H.appendChild(d);return}
+    list.forEach(en=>{
+      const it=document.createElement("div");it.className="item";
+      const what=document.createElement("span");what.className="what";
+      const when=document.createElement("span");when.className="when";
+      const amt=document.createElement("span");amt.className="amt num";
+      if(en.kind==="income"){const sn=en.source&&SRCBY[en.source]?SRCBY[en.source].name:"Доход";what.textContent=en.note?sn+" · "+en.note:sn;amt.textContent="+"+fmt(en.amount);amt.classList.add("plus")}
+      else if(en.kind==="move"){const f=ENVBY[en.from],t=ENVBY[en.to];what.textContent="Переложила · "+(f?f.name:"?")+" → "+(t?t.name:"?")+(en.note?" · "+en.note:"");amt.textContent=fmt(en.amount);amt.classList.add("move")}
+      else{const e=ENVBY[en.env];what.textContent=(e?e.name:"Трата")+(en.note?" · "+en.note:"");amt.textContent="−"+fmt(en.amount)}
+      when.textContent=dateLabel(en.date);
+      const del=document.createElement("button");del.type="button";del.className="del";
+      const isP=pendingDel===en.id;del.textContent=isP?"Удалить?":"✕";if(isP)del.classList.add("confirm");
+      del.setAttribute("aria-label",isP?"Подтвердить удаление":"Удалить запись");
+      del.onclick=()=>{if(pendingDel===en.id){removeEntry(en.id)}else{pendingDel=en.id;render();setTimeout(()=>{if(pendingDel===en.id){pendingDel=null;render()}},4000)}};
+      it.append(what,amt,del,when);
+      if(en.kind==="income"&&allocs[en.id]){
+        const open=expanded.has(en.id);
+        const m=document.createElement("button");m.type="button";m.className="more";m.textContent=open?"Скрыть":"Куда что закинуть";
+        m.setAttribute("aria-expanded",String(open));
+        m.onclick=()=>{open?expanded.delete(en.id):expanded.add(en.id);render()};
+        it.appendChild(m);if(open)it.appendChild(planEl(allocs[en.id]));
+      }
+      H.appendChild(it);
+    });
+  }
+  // ---- planned payments: one-off (date) or monthly (day of month)
+  function iso(d){const x=new Date(d);x.setMinutes(x.getMinutes()-x.getTimezoneOffset());return x.toISOString().slice(0,10)}
+  function nextDate(p){
+    const t=today();
+    if(p.monthly){const now=new Date(t+"T12:00:00");let y=now.getFullYear(),m=now.getMonth();
+      const mk=(y,m)=>{const last=new Date(y,m+1,0).getDate();return iso(new Date(y,m,Math.min(p.day,last),12))};
+      let d=mk(y,m);if(d<t){m++;if(m>11){m=0;y++}d=mk(y,m)}return d}
+    return p.date>=t?p.date:null;
+  }
+  let pendingPDel=null;
+  function renderPlanned(bal){
+    const P=$("planned");P.textContent="";
+    const list=(settings.planned||[]).map((p,i)=>({...p,i,next:nextDate(p)})).filter(p=>p.next).sort((a,b)=>a.next<b.next?-1:a.next>b.next?1:0);
+    if(!list.length){const d=document.createElement("div");d.className="empty";d.textContent="Пока ничего. Добавь подарки, годовщину и другие траты с датой, и трекер покажет, хватает ли на них денег.";P.appendChild(d);return}
+    const left={...bal};const t0=new Date(today()+"T12:00:00");
+    list.forEach(p=>{
+      const it=document.createElement("div");it.className="pitem";
+      const name=document.createElement("span");name.className="pname";name.textContent=p.name;
+      const amt=document.createElement("span");amt.className="pamt num";amt.textContent=fmt(p.amount);
+      const meta=document.createElement("span");meta.className="pmeta";
+      const days=Math.round((new Date(p.next+"T12:00:00")-t0)/864e5);
+      const when=document.createElement("span");when.textContent=dateLabel(p.next)+(days===0?" · сегодня":days===1?" · завтра":" · через "+days+" дн.")+(p.monthly?" · каждый месяц":"");
+      if(days<=3)when.className="soon";
+      const e=ENVBY[p.env]||ENVBY.need;const have=left[e.k]||0;const ok=have>=p.amount;left[e.k]=have-p.amount;
+      const pill=document.createElement("span");pill.className="pill "+(ok?"ok":"short");
+      pill.textContent=ok?"хватает":"не хватает "+fmt(p.amount-Math.max(0,have));
+      meta.append(when," · из «"+e.name+"», карта «"+cardName(cardOf(e.k))+"»",pill);
+      const del=document.createElement("button");del.type="button";del.className="del";const isP=pendingPDel===p.i;
+      del.textContent=isP?"Удалить?":"✕";if(isP)del.classList.add("confirm");del.setAttribute("aria-label",isP?"Подтвердить удаление":"Удалить плановую трату");
+      del.onclick=()=>{if(pendingPDel===p.i){pendingPDel=null;savePlanned((settings.planned||[]).filter((_,j)=>j!==p.i))}else{pendingPDel=p.i;render();setTimeout(()=>{if(pendingPDel===p.i){pendingPDel=null;render()}},4000)}};
+      it.append(name,amt,del,meta);P.appendChild(it);
+    });
+  }
+  async function savePlanned(next){
+    if(db){try{await db.doc("settings/main").set({...JSON.parse(JSON.stringify(settings)),planned:next});return true}catch(e){$("p-msg").textContent="Не сохранилось, попробуй ещё раз.";return false}}
+    settings.planned=next;render();return true;
+  }
+  (function(){const S=$("p-env");ENVS.forEach(e=>{const o=document.createElement("option");o.value=e.k;o.textContent=e.name;S.appendChild(o)});S.value="goals"})();
+  $("p-add").onclick=async()=>{
+    const name=$("p-name").value.trim().slice(0,60),amount=Math.round(num($("p-amount").value)),date=$("p-date").value,monthly=$("p-monthly").checked,env=$("p-env").value;
+    if(!name||!(amount>0)||!date){$("p-msg").textContent="Заполни, что это, сумму и дату.";return}
+    const item={name,amount,env,monthly};if(monthly)item.day=+date.slice(8,10);else item.date=date;
+    if(await savePlanned([...(settings.planned||[]),item])){$("p-name").value="";$("p-amount").value="";$("p-monthly").checked=false;$("p-msg").textContent="Добавлено."}
+  };
+  function cardOf(k){return k==="need"?1:k==="fun"?2:3}
+  function cardName(i){const c=settings.cards||{};return (c["c"+i]||"").trim()||("Карта "+i)}
+  function transferPlan(a){
+    // envelope → card: need stays on card 1, fun → card 2, the rest → savings card 3 (by piggy bank)
+    const rows=[];
+    if(a.need)rows.push({card:cardName(1),what:"оставить на обязательное",amt:a.need,c:"--e-need"});
+    if(a.fun)rows.push({card:cardName(2),what:"перевести, это на гулять",amt:a.fun,c:"--e-fun"});
+    [["anniv","в копилку «Годовщина»"],["cushion","в копилку «Подушка»"],["drive","на вклад «Автошкола»"],["goals","в копилку «Цели»"],["invest","в копилку «Инвестиции»"]].forEach(([k,t])=>{
+      if(a[k])rows.push({card:cardName(3),what:t,amt:a[k],c:"--e-"+k})});
+    return rows;
+  }
+  function planEl(a){
+    const box=document.createElement("div");box.className="plan";
+    transferPlan(a).forEach(r=>{const row=document.createElement("div");row.className="planrow";row.style.setProperty("--c","var("+r.c+")");
+      const l=document.createElement("span");l.className="pl";l.innerHTML='<span class="dot"></span>';
+      const t=document.createElement("span");const b=document.createElement("b");b.textContent=r.card;t.append(b," "+r.what);l.appendChild(t);
+      const v=document.createElement("span");v.className="pv num";v.textContent=fmt(r.amt);
+      row.append(l,v);box.appendChild(row)});
+    return box;
+  }
+  function renderPreview(bal){
+    const P=$("preview");P.textContent="";const amt=num($("f-amount").value);
+    $("save").disabled=!(amt>0);
+    if(!(amt>0))return;
+    if(kind==="move"){
+      const h=document.createElement("div");h.className="note";
+      const cf=cardOf(moveFrom),ct=cardOf(moveTo);
+      h.textContent=cf===ct?("Деньги остаются на «"+cardName(cf)+"», меняется только копилка."):("Переведи "+fmt(amt)+" с «"+cardName(cf)+"» на «"+cardName(ct)+"».");
+      if((bal[moveFrom]||0)<amt){h.textContent+=" В «"+ENVBY[moveFrom].name+"» сейчас только "+fmt(bal[moveFrom]||0)+"."}
+      P.append(h);return;
+    }
+    if(kind!=="income")return;
+    const src=curSource();
+    const a=allocate(amt,bal,src);
+    const anyNeg=ENVS.some(e=>(bal[e.k]||0)<0);
+    const h=document.createElement("div");h.className="note";h.textContent=src==="other"?(anyNeg?"Сначала закрывает минус в конвертах, остаток в подушку:":"Внеплановые деньги идут в подушку:"):"Куда что закинуть:";
+    P.append(h,planEl(a));
+  }
+  function curSource(){return source||(kind==="income"&&autoPick)||guessSource($("f-date").value)}
+  function curEnv(){return manualEnv||(kind==="spend"&&autoPick)||"fun"}
+  function buildSrcChips(){
+    const C=$("srcchips");C.textContent="";const cur=curSource();
+    SOURCES.forEach(s=>{const b=document.createElement("button");b.type="button";b.className="chip";b.style.setProperty("--c","var(--accent)");
+      b.setAttribute("aria-pressed",String(cur===s.k));b.textContent=s.name;b.onclick=()=>{source=s.k;refreshPick()};C.appendChild(b)});
+  }
+
+  function buildChips(){
+    const C=$("chips");C.textContent="";
+    ENVS.forEach(e=>{const b=document.createElement("button");b.type="button";b.className="chip";b.style.setProperty("--c","var("+e.c+")");
+      b.setAttribute("aria-pressed",String(curEnv()===e.k));b.innerHTML='<span class="dot" style="background:var(--c)"></span>';b.append(e.name);
+      b.onclick=()=>{manualEnv=e.k;refreshPick()};C.appendChild(b)});
+  }
+  function buildMoveChips(){
+    const mk=(box,cur,set)=>{const C=$(box);C.textContent="";ENVS.forEach(e=>{const b=document.createElement("button");b.type="button";b.className="chip";b.style.setProperty("--c","var("+e.c+")");
+      b.setAttribute("aria-pressed",String(cur===e.k));b.innerHTML='<span class="dot" style="background:var(--c)"></span>';b.append(e.name);
+      b.onclick=()=>{set(e.k);buildMoveChips();render()};C.appendChild(b)})};
+    mk("fromchips",moveFrom,k=>{if(k===moveTo)moveTo=moveFrom;moveFrom=k});
+    mk("tochips",moveTo,k=>{if(k===moveFrom)moveFrom=moveTo;moveTo=k});
+  }
+  function setKind(k){if(kind===k)return;kind=k;["income","spend","move"].forEach(x=>$("kind-"+x).setAttribute("aria-pressed",String(k===x)));
+    $("envpick").hidden=k!=="spend";$("srcpick").hidden=k!=="income";$("movepick").hidden=k!=="move";
+    $("noteLabel").textContent=k==="income"?"Откуда деньги":k==="spend"?"На что потратила":"Комментарий, если нужен";
+    $("f-note").placeholder=k==="income"?"Например: зарплата за уроки, мама скинула":k==="spend"?"Например: кофе с подругой, проезд":"Например: на еду до четверга";
+    source=null;manualEnv=null;classifyNote()}
+  $("kind-income").onclick=()=>setKind("income");$("kind-spend").onclick=()=>setKind("spend");$("kind-move").onclick=()=>setKind("move");
+  $("f-amount").addEventListener("input",render);
+  $("f-note").addEventListener("input",()=>{if(kind==="move")return;source=null;manualEnv=null;clearTimeout(noteTimer);
+    const t=$("f-note").value.trim();
+    if(t.length<3||ruleMatch(t,kind)){classifyNote()}else{autoPick=null;noteTimer=setTimeout(classifyNote,700)}});
+  $("f-date").value=today();
+  $("f-date").addEventListener("change",()=>{source=null;buildSrcChips();render()});
+
+  function setStatus(t,warn){const s=$("status");s.textContent=t;s.classList.toggle("warn",!!warn);s.hidden=!t}
+
+  $("save").onclick=async()=>{
+    const amount=Math.round(num($("f-amount").value));if(!(amount>0))return;
+    $("save").disabled=true;
+    if(noteTimer){clearTimeout(noteTimer);noteTimer=null;if(!autoPick&&!source&&!manualEnv&&$("f-note").value.trim().length>=3)classifyNote()}
+    if(aiBusy&&aiPromise){await Promise.race([aiPromise,new Promise(r=>setTimeout(r,8000))])}
+    const en={kind,amount,date:$("f-date").value||today(),note:$("f-note").value.trim().slice(0,80),createdAt:Date.now()};
+    if(kind==="spend")en.env=curEnv();else if(kind==="move"){en.from=moveFrom;en.to=moveTo}else en.source=curSource();
+    if(!(await addEntry(en))){$("save").disabled=false;return}
+    haptic("success");
+    $("f-amount").value="";$("f-note").value="";source=null;manualEnv=null;autoPick=null;autoBy=null;aiBusy=false;refreshPick();
+  };
+  async function addEntry(en){
+    if(db){
+      const ref=db.collection("entries").doc();
+      if(en.kind==="income")expanded.add(ref.id);
+      try{await ref.set(en);return true}catch(e){expanded.delete(ref.id);setStatus("Не получилось сохранить: "+(e&&e.message||"ошибка")+". Попробуй ещё раз.",true);render();return false}
+    }
+    const id="local"+Date.now()+Math.random().toString(36).slice(2,6);if(en.kind==="income")expanded.add(id);entries.push({...en,id});render();return true;
+  }
+  async function removeEntry(id){
+    pendingDel=null;
+    if(db){try{await db.doc("entries/"+id).delete()}catch(e){setStatus("Не получилось удалить запись.",true)}}
+    else{entries=entries.filter(x=>x.id!==id);render()}
+  }
+
+  function buildSettings(){
+    const mk=(box,obj,prefix)=>{const B=$(box);B.textContent="";ENVS.forEach(e=>{const l=document.createElement("label");l.append(e.name);
+      const i=document.createElement("input");i.id=prefix+e.k;i.inputMode="numeric";i.className="num";i.value=obj[e.k]||0;l.appendChild(i);B.appendChild(l)})};
+    mk("salaryInputs",settings.salary,"sa-");mk("workInputs",settings.work,"wk-");mk("weekendInputs",settings.weekend,"we-");mk("startInputs",settings.start,"st-");$("s-target").value=settings.target;$("s-drive").value=settings.driveTarget;
+    const c=settings.cards||{};[1,2,3].forEach(i=>$("cn-"+i).value=c["c"+i]||"");
+  }
+  $("saveSettings").onclick=async()=>{
+    const next={salary:{},work:{},weekend:{},planned:settings.planned||[],start:{},target:Math.round(num($("s-target").value)),driveTarget:Math.round(num($("s-drive").value)),after:settings.after,cards:{}};
+    ENVS.forEach(e=>{next.salary[e.k]=Math.round(num($("sa-"+e.k).value));next.work[e.k]=Math.round(num($("wk-"+e.k).value));next.weekend[e.k]=Math.round(num($("we-"+e.k).value));next.start[e.k]=Math.round(num($("st-"+e.k).value))});
+    [1,2,3].forEach(i=>next.cards["c"+i]=$("cn-"+i).value.trim().slice(0,30));
+    if(db){try{await db.doc("settings/main").set(next);$("settingsMsg").textContent="Сохранено."}catch(e){$("settingsMsg").textContent="Не сохранилось, попробуй ещё раз."}}
+    else{settings=next;render();$("settingsMsg").textContent="Сохранено до закрытия страницы."}
+  };
+
+
+  // ---------- Telegram: theme, haptics, storage ----------
+  const TG=window.Telegram&&window.Telegram.WebApp&&window.Telegram.WebApp.initData!==undefined?window.Telegram.WebApp:null;
+  const inTG=!!(TG&&TG.initData);
+  function applyTheme(){
+    if(!inTG)return;
+    document.documentElement.setAttribute("data-theme",TG.colorScheme==="dark"?"dark":"light");
+    const bg=getComputedStyle(document.body).backgroundColor;
+    try{TG.setHeaderColor(bg);TG.setBackgroundColor(bg)}catch(_){}
+  }
+  if(inTG){try{TG.ready();TG.expand();if(TG.disableVerticalSwipes)TG.disableVerticalSwipes()}catch(_){}
+    applyTheme();try{TG.onEvent("themeChanged",applyTheme)}catch(_){}}
+  function haptic(t){try{if(inTG)TG.HapticFeedback.notificationOccurred(t)}catch(_){}}
+
+  // key-value backend: Telegram CloudStorage inside Telegram, localStorage in a normal browser
+  const KV=(inTG&&TG.CloudStorage&&TG.isVersionAtLeast&&TG.isVersionAtLeast("6.9"))?{
+    keys:()=>new Promise((ok,no)=>TG.CloudStorage.getKeys((e,k)=>e?no(e):ok(k||[]))),
+    getMany:(keys)=>new Promise((ok,no)=>{if(!keys.length)return ok({});TG.CloudStorage.getItems(keys,(e,v)=>e?no(e):ok(v||{}))}),
+    set:(k,v)=>new Promise((ok,no)=>TG.CloudStorage.setItem(k,v,(e)=>e?no(e):ok())),
+    remove:(k)=>new Promise((ok,no)=>TG.CloudStorage.removeItem(k,(e)=>e?no(e):ok()))
+  }:{
+    keys:async()=>{const r=[];try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k.startsWith("kv_"))r.push(k.slice(3))}}catch(_){}return r},
+    getMany:async(keys)=>{const o={};keys.forEach(k=>{try{o[k]=localStorage.getItem("kv_"+k)}catch(_){}});return o},
+    set:async(k,v)=>{localStorage.setItem("kv_"+k,v)},
+    remove:async(k)=>{try{localStorage.removeItem("kv_"+k)}catch(_){}}
+  };
+  async function makeStore(){
+    const keys=await KV.keys();
+    const vals={};for(let i=0;i<keys.length;i+=100)Object.assign(vals,await KV.getMany(keys.slice(i,i+100)));
+    let settingsDoc=null;try{if(vals.settings)settingsDoc=JSON.parse(vals.settings)}catch(_){}
+    const ents=new Map();keys.filter(k=>k.startsWith("e_")).forEach(k=>{try{ents.set(k.slice(2),JSON.parse(vals[k]))}catch(_){}});
+    const sL=[],eL=[];
+    const meta={fromCache:false,hasPendingWrites:false};
+    const emitS=()=>sL.forEach(f=>f({exists:!!settingsDoc,data:()=>settingsDoc,metadata:meta}));
+    const emitE=()=>{const docs=[...ents].map(([id,d])=>({id,exists:true,data:()=>d,metadata:meta}));eL.forEach(f=>f({docs,size:docs.length,empty:!docs.length,metadata:meta}))};
+    const newId=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+    const checkRoom=()=>{if(ents.size>950)setStatus("Память почти заполнена ("+ents.size+" записей из ~1000). Удали старые записи или начни заново.",true)};
+    const entryRef=(id)=>({id,
+      set:async(d)=>{const v=JSON.stringify(d);if(v.length>4000)throw new Error("запись слишком длинная");await KV.set("e_"+id,v);ents.set(id,d);emitE();checkRoom()},
+      delete:async()=>{await KV.remove("e_"+id);ents.delete(id);emitE()}});
+    const store={fresh:!settingsDoc,
+      doc(path){
+        if(path==="settings/main")return{
+          set:async(d)=>{const v=JSON.stringify(d);if(v.length>4000)throw new Error("настройки слишком большие");await KV.set("settings",v);settingsDoc=JSON.parse(v);emitS()},
+          update:async(d)=>store.doc("settings/main").set({...(settingsDoc||{}),...d}),
+          onSnapshot(next){sL.push(next);setTimeout(()=>next({exists:!!settingsDoc,data:()=>settingsDoc,metadata:meta}),0);return()=>{}}};
+        if(path.startsWith("entries/"))return entryRef(path.slice(8));
+        throw new TypeError("unknown path "+path);
+      },
+      collection(path){return{
+        doc:(id)=>entryRef(id||newId()),
+        onSnapshot(next){eL.push(next);setTimeout(emitE,0);return()=>{}}}}
+    };
+    checkRoom();
+    return store;
+  }
+  let resetArmed=false,resetTimer=null;
+  $("resetAll").onclick=async()=>{
+    const btn=$("resetAll");
+    if(!resetArmed){resetArmed=true;btn.textContent="Точно? Вся история удалится. Нажми ещё раз";clearTimeout(resetTimer);
+      resetTimer=setTimeout(()=>{resetArmed=false;btn.textContent="Начать заново с этими суммами"},5000);return}
+    resetArmed=false;clearTimeout(resetTimer);btn.disabled=true;btn.textContent="Начинаю заново…";
+    const start={};ENVS.forEach(e=>start[e.k]=Math.round(num($("st-"+e.k).value)));
+    try{
+      if(db){
+        await db.doc("settings/main").set({...JSON.parse(JSON.stringify(settings)),start});
+        for(const en of [...entries]){await db.doc("entries/"+en.id).delete()}
+      }else{settings.start=start;entries=[];render()}
+      $("settingsMsg").textContent="Готово: история очищена, конверты начинаются с этих сумм.";if(db)db.fresh=false;setStatus("");haptic("success");
+    }catch(e){$("settingsMsg").textContent="Не всё получилось удалить, нажми ещё раз."}
+    btn.disabled=false;btn.textContent="Начать заново с этими суммами";
+  };
+
+  buildChips();buildSrcChips();buildMoveChips();buildSettings();render();
+
+  (async()=>{
+    try{db=await makeStore()}catch(e){db=null}
+    if(!db){setStatus("Не получилось открыть хранилище. Перезапусти приложение.",true);return}
+    if(db.fresh){setStatus("Первый запуск: открой «Настройки плана», впиши, сколько сейчас лежит в каждом конверте, и нажми «Начать заново».",true);$("settingsBox").open=true}
+    let gotEntries=false,gotSettings=false;
+    const timer=setTimeout(()=>{if(!gotEntries)setStatus("Пока не удаётся загрузить записи. Проверь интернет.",true)},10000);
+    db.doc("settings/main").onSnapshot(s=>{
+      if(s.exists){const d=s.data();settings={salary:{...DEFAULTS.salary,...(d.salary||{})},work:{...DEFAULTS.work,...(d.work||{})},planned:Array.isArray(d.planned)?d.planned:[],weekend:{...DEFAULTS.weekend,...(d.weekend||{})},start:{...DEFAULTS.start,...(d.start||{})},target:num(d.target)||DEFAULTS.target,driveTarget:num(d.driveTarget)||DEFAULTS.driveTarget,after:{...(d.after||DEFAULTS.after)},cards:{...(d.cards||{})}}}
+      if(!gotSettings||!$("settingsBox").open)buildSettings();
+      gotSettings=true;render();
+    },()=>{});
+    db.collection("entries").onSnapshot(q=>{
+      entries=q.docs.map(d=>({id:d.id,...d.data()})).filter(x=>num(x.amount)>0).map(x=>({...x,amount:num(x.amount)}));
+      if(!q.metadata.fromCache){gotEntries=true;clearTimeout(timer);if(!db.fresh)setStatus("")}
+      render();
+    },e=>{clearTimeout(timer);setStatus("Записи сейчас недоступны.",true)});
+  })();
+})();
+</script>
+</body>
+</html>
